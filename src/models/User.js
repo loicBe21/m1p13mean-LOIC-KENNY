@@ -6,7 +6,8 @@
 
 
 const mongoose = require("mongoose");
-const { imageSimple, phoneSimple, emailRequired } = require("../validators");
+const bcrypt = require("bcryptjs");
+const {  phoneSimple, emailRequired } = require("../validators");
 
 
 /**
@@ -102,17 +103,20 @@ userSchema.index({ role: 1 });
 userSchema.index({ boutiqueId: 1, role: 1 });
 
 
+
+
+
 // ============================================
-// MIDDLEWARES MONGOOSE (Hooks)
+// HOOKS MONGOOSE (CORRIGÉ)
 // ============================================
 
 /**
  * Hook : Hashage automatique du mot de passe avant sauvegarde
  */
-userSchema.pre('save', async function(next) {
-  // Si le mot de passe n'est pas modifié, passer
+userSchema.pre('save', async function() {
+  // Si le mot de passe n'est pas modifié, sortir silencieusement
   if (!this.isModified('motDePasse')) {
-    return next();
+    return;
   }
   
   try {
@@ -126,12 +130,15 @@ userSchema.pre('save', async function(next) {
     this.motDePasse = await bcrypt.hash(this.motDePasse, salt);
     console.log('    Mot de passe hashé');
     
-    next();
   } catch (error) {
     console.error(' [UserSchema] Erreur hashage:', error.message);
-    next(error);
+    // Relancer l'erreur pour qu'elle soit capturée par Mongoose
+    throw error;
   }
 });
+
+
+
 
 
 // ============================================
@@ -144,38 +151,18 @@ userSchema.pre('save', async function(next) {
  * @returns {Boolean} true si correspond, false sinon
  */
 userSchema.methods.comparePassword = async function(candidatePassword) {
-  try {
-    console.log('🔑 [UserSchema] Comparaison mot de passe...');
-    const isMatch = await bcrypt.compare(candidatePassword, this.motDePasse);
-    console.log(`   Résultat: ${isMatch ? '✅ OK' : '❌ NOK'}`);
-    return isMatch;
-  } catch (error) {
-    console.error('❌ [UserSchema] Erreur comparaison:', error.message);
-    throw error;
-  }
+  return await bcrypt.compare(candidatePassword, this.motDePasse);
 };
+
 
 
 /**
- * Méthode : Vérifier si l'utilisateur est admin
+ * Vérifier le rôle
  */
-userSchema.methods.isAdmin = function() {
-  return this.role === 'admin';
-};
+userSchema.methods.isAdmin = function() { return this.role === 'admin'; };
+userSchema.methods.isBoutique = function() { return this.role === 'boutique'; };
+userSchema.methods.isClient = function() { return this.role === 'client'; };
 
-/**
- * Méthode : Vérifier si l'utilisateur est boutique
- */
-userSchema.methods.isBoutique = function() {
-  return this.role === 'boutique';
-};
-
-/**
- * Méthode : Vérifier si l'utilisateur est client
- */
-userSchema.methods.isClient = function() {
-  return this.role === 'client';
-};
 
 
 // ============================================
@@ -188,3 +175,28 @@ userSchema.methods.isClient = function() {
 userSchema.statics.findByEmail = function(email) {
   return this.findOne({ email }).select('+motDePasse');
 };
+
+// ============================================
+// TRANSFORMATION JSON
+// ============================================
+
+userSchema.methods.toJSON = function() {
+  const user = this.toObject();
+  delete user.motDePasse;
+  delete user.__v;
+  
+  // Formater les dates
+  if (user.createdAt) user.createdAt = new Date(user.createdAt).toISOString();
+  if (user.updatedAt) user.updatedAt = new Date(user.updatedAt).toISOString();
+  
+  return user;
+};
+
+
+
+
+
+const User = mongoose.model("User", userSchema);
+
+module.exports = User;
+
