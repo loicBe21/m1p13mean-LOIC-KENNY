@@ -21,10 +21,10 @@ const createBoutique = async (boutiqueData) => {
 
     // Créer la boutique
     const boutique = await Boutique.create(boutiqueData);
-    console.log(`✅ [BoutiqueService] Boutique créée: ${boutique.nom}`);
+    console.log(` [BoutiqueService] Boutique créée: ${boutique.nom}`);
     return boutique;
   } catch (error) {
-    console.error("❌ [BoutiqueService] Erreur createBoutique:", error.message);
+    console.error(" [BoutiqueService] Erreur createBoutique:", error.message);
     throw error;
   }
 };
@@ -38,12 +38,12 @@ const getAllBoutiques = async (filters = {}) => {
   try {
     const boutiques = await Boutique.find(filters).sort({ nom: 1 });
     console.log(
-      `✅ [BoutiqueService] ${boutiques.length} boutiques récupérées`
+      ` [BoutiqueService] ${boutiques.length} boutiques récupérées`
     );
     return boutiques;
   } catch (error) {
     console.error(
-      "❌ [BoutiqueService] Erreur getAllBoutiques:",
+      " [BoutiqueService] Erreur getAllBoutiques:",
       error.message
     );
     throw error;
@@ -59,7 +59,7 @@ const getBoutiqueById = async (id) => {
   try {
     const boutique = await Boutique.findById(id);
     if (boutique)
-      console.log(`✅ [BoutiqueService] Boutique trouvée: ${boutique.nom}`);
+      console.log(` [BoutiqueService] Boutique trouvée: ${boutique.nom}`);
     return boutique;
   } catch (error) {
     console.error(
@@ -86,10 +86,10 @@ const updateBoutique = async (id, updateData) => {
 
     if (!boutique) throw new Error("Boutique non trouvée");
 
-    console.log(`✅ [BoutiqueService] Boutique mise à jour: ${boutique.nom}`);
+    console.log(` [BoutiqueService] Boutique mise à jour: ${boutique.nom}`);
     return boutique;
   } catch (error) {
-    console.error("❌ [BoutiqueService] Erreur updateBoutique:", error.message);
+    console.error(" [BoutiqueService] Erreur updateBoutique:", error.message);
     throw error;
   }
 };
@@ -105,10 +105,10 @@ const deleteBoutique = async (id) => {
     const boutique = await Boutique.findByIdAndDelete(id);
     if (!boutique) throw new Error("Boutique non trouvée");
 
-    console.log(`✅ [BoutiqueService] Boutique supprimée: ${boutique.nom}`);
+    console.log(` [BoutiqueService] Boutique supprimée: ${boutique.nom}`);
     return boutique;
   } catch (error) {
-    console.error("❌ [BoutiqueService] Erreur deleteBoutique:", error.message);
+    console.error(" [BoutiqueService] Erreur deleteBoutique:", error.message);
     throw error;
   }
 };
@@ -125,12 +125,12 @@ const searchBoutiques = async (query) => {
     }).sort({ nom: 1 });
 
     console.log(
-      `✅ [BoutiqueService] ${boutiques.length} résultats pour "${query}"`
+      ` [BoutiqueService] ${boutiques.length} résultats pour "${query}"`
     );
     return boutiques;
   } catch (error) {
     console.error(
-      "❌ [BoutiqueService] Erreur searchBoutiques:",
+      " [BoutiqueService] Erreur searchBoutiques:",
       error.message
     );
     throw error;
@@ -145,12 +145,12 @@ const getBoutiquesActives = async () => {
   try {
     const boutiques = await Boutique.find({ actif: true }).sort({ nom: 1 });
     console.log(
-      `✅ [BoutiqueService] ${boutiques.length} boutiques actives récupérées`
+      ` [BoutiqueService] ${boutiques.length} boutiques actives récupérées`
     );
     return boutiques;
   } catch (error) {
     console.error(
-      "❌ [BoutiqueService] Erreur getBoutiquesActives:",
+      " [BoutiqueService] Erreur getBoutiquesActives:",
       error.message
     );
     throw error;
@@ -165,12 +165,12 @@ const getBoutiquesInactives = async () => {
   try {
     const boutiques = await Boutique.find({ actif: false }).sort({ nom: 1 });
     console.log(
-      `✅ [BoutiqueService] ${boutiques.length} boutiques inactives récupérées`
+      ` [BoutiqueService] ${boutiques.length} boutiques inactives récupérées`
     );
     return boutiques;
   } catch (error) {
     console.error(
-      "❌ [BoutiqueService] Erreur getBoutiquesInactives:",
+      " [BoutiqueService] Erreur getBoutiquesInactives:",
       error.message
     );
     throw error;
@@ -188,11 +188,11 @@ const activerBoutique = async (id) => {
     if (!boutique) throw new Error("Boutique non trouvée");
 
     await boutique.activer();
-    console.log(`✅ [BoutiqueService] Boutique activée: ${boutique.nom}`);
+    console.log(` [BoutiqueService] Boutique activée: ${boutique.nom}`);
     return boutique;
   } catch (error) {
     console.error(
-      "❌ [BoutiqueService] Erreur activerBoutique:",
+      " [BoutiqueService] Erreur activerBoutique:",
       error.message
     );
     throw error;
@@ -210,11 +210,11 @@ const desactiverBoutique = async (id) => {
     if (!boutique) throw new Error("Boutique non trouvée");
 
     await boutique.desactiver();
-    console.log(`✅ [BoutiqueService] Boutique désactivée: ${boutique.nom}`);
+    console.log(` [BoutiqueService] Boutique désactivée: ${boutique.nom}`);
     return boutique;
   } catch (error) {
     console.error(
-      "❌ [BoutiqueService] Erreur desactiverBoutique:",
+      " [BoutiqueService] Erreur desactiverBoutique:",
       error.message
     );
     throw error;
