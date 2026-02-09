@@ -4,6 +4,7 @@
 // ============================================
 
 const Boutique = require("../models/boutique");
+const paginateAndFilter = require("../utils/paginate");
 
 /**
  * Créer une nouvelle boutique
@@ -221,6 +222,43 @@ const desactiverBoutique = async (id) => {
   }
 };
 
+
+
+
+
+/**
+ * Obtenir toutes les boutiques avec pagination et filtres
+ * @param {Object} query - Paramètres de requête (page, limit, filtres)
+ * @param {Object} defaultFilters - Filtres par défaut optionnels
+ * @returns {Object} Résultat paginé
+ */
+const getBoutiquesPaginated = async (query = {}, defaultFilters = {}) => {
+  try {
+    console.log(`🔍 [BoutiqueService] Requête paginée avec filtres:`, query);
+
+    // Appliquer la pagination et les filtres
+    const result = await paginateAndFilter(
+      Boutique,
+      query,
+      defaultFilters,
+      [] // Pas de populate nécessaire pour les boutiques
+    );
+
+    console.log(
+      ` [BoutiqueService] ${result.documents.length} boutiques retournées (page ${result.page}/${result.totalPages})`
+    );
+
+    return result;
+  } catch (error) {
+    console.error(
+      " [BoutiqueService] Erreur getBoutiquesPaginated:",
+      error.message
+    );
+    throw error;
+  }
+};
+
+
 // ============================================
 // EXPORT
 // ============================================
@@ -236,4 +274,5 @@ module.exports = {
   getBoutiquesInactives,
   activerBoutique,
   desactiverBoutique,
+  getBoutiquesPaginated,
 };

@@ -169,6 +169,32 @@ const deactivate = async (req, res) => {
   }
 };
 
+
+const getListPaginated = async (req, res) => {
+  try {
+    // Définir les filtres par défaut si nécessaire
+    const defaultFilters = {};
+
+    // Appliquer la pagination et les filtres
+    const result = await getBoutiquesPaginated(req.query, defaultFilters);
+
+    res.json({
+      success: true,
+      data: result, // Structure déjà formatée par paginateAndFilter
+    });
+  } catch (error) {
+    console.error(
+      "❌ [BoutiqueController] Erreur getListPaginated:",
+      error.message
+    );
+    res.status(500).json({
+      success: false,
+      error: "Erreur lors de la récupération des boutiques paginées",
+    });
+  }
+};
+
+
 // ============================================
 // EXPORT
 // ============================================
@@ -184,4 +210,5 @@ module.exports = {
   getInactives,
   activate,
   deactivate,
+  getListPaginated,
 };

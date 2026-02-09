@@ -16,6 +16,7 @@ const {
   getInactives,
   activate,
   deactivate,
+  getListPaginated,
 } = require("../controllers/boutique.controller");
 const authJwtMiddleware = require("../middlewares/authJwt.middelware");
 
@@ -31,6 +32,7 @@ router.use(authJwtMiddleware);
 
 router.post("/", create); // Créer boutique
 router.get("/", getAll); // Liste toutes boutiques
+router.get("/list", getListPaginated);
 router.get("/search", search); // Recherche
 router.get("/actives", getActives); // Boutiques actives
 router.get("/inactives", getInactives); // Boutiques inactives
