@@ -14,6 +14,7 @@ const {
   getBoutiquesInactives,
   activerBoutique,
   desactiverBoutique,
+  getBoutiquesPaginated,
 } = require("../services/boutique.service");
 
 // ============================================
