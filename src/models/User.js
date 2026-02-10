@@ -79,7 +79,7 @@ const userSchema = new mongoose.Schema(
         required: function () {
           return this.role === "client";
         },
-        match: [/^\d{5}$/, "Code postal invalide (5 chiffres)"],
+        match: [/^\d{3}$/, "Code postal invalide (5 chiffres)"],
         trim: true,
       },
     },

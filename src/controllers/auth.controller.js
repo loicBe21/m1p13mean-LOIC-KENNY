@@ -22,6 +22,7 @@ const register = async (req, res) => {
       success: false,
       error: error.message,
     });
+    
   }
 };
 

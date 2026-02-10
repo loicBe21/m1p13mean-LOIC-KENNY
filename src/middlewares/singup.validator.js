@@ -77,7 +77,7 @@ const signupValidator = async (req, res, next) => {
     next();
   } catch (error) {
      /* throw error; */
-    console.error("❌ [SignupValidator] Erreur:", error.message);
+    console.error(" [SignupValidator] Erreur:", error.message);
     res.status(500).json({
       success: false,
       error: "Erreur serveur lors de la validation",

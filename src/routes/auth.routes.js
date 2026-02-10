@@ -14,8 +14,9 @@ const signupValidator = require("../middlewares/singup.validator");
 const authJwtMiddleware = require("../middlewares/authJwt.middelware");
 
 // Routes publiques
-router.post("/register", signupValidator, register);
 router.post("/login", login);
+router.post("/register", signupValidator, register);
+
 
 // Routes protégées
 router.use(authJwtMiddleware);
