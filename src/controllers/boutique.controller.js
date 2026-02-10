@@ -1,6 +1,5 @@
 // ============================================
-// src/controllers/boutique.controller.js
-// Contrôleur Boutique - Interface HTTP légère
+// Contrôleur Boutique -
 // ============================================
 
 const {
@@ -20,6 +19,11 @@ const {
 // ============================================
 // CONTRÔLEURS
 // ============================================
+
+
+
+
+
 
 const create = async (req, res) => {
   try {
