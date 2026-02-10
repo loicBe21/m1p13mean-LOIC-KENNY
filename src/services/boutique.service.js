@@ -4,6 +4,7 @@
 // ============================================
 
 const Boutique = require("../models/boutique");
+const User = require("../models/User");
 const paginateAndFilter = require("../utils/paginate");
 
 /**
@@ -259,6 +260,58 @@ const getBoutiquesPaginated = async (query = {}, defaultFilters = {}) => {
 };
 
 
+
+
+
+
+/**
+ * Assigner un utilisateur boutique à une boutique
+ * @param {String} boutiqueId - ID de la boutique
+ * @param {String} userId - ID de l'utilisateur
+ * @returns {Object} Utilisateur mis à jour
+ * @throws {Error} Si validation échoue
+ */
+const assignUserToBoutique = async (boutiqueId, userId) => {
+  try {
+    console.log(` [BoutiqueService] Assignation utilisateur ${userId} à boutique ${boutiqueId}`);
+    
+    // Vérifier que la boutique existe
+    const boutique = await Boutique.findById(boutiqueId);
+    if (!boutique) {
+      throw new Error('Boutique non trouvée');
+    }
+    
+    // Vérifier que l'utilisateur existe et a le rôle "boutique"
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error('Utilisateur non trouvé');
+    }
+    
+    if (user.role !== 'boutique') {
+      throw new Error('L\'utilisateur doit avoir le rôle "boutique"');
+    }
+    
+    // Vérifier que l'utilisateur n'est pas déjà assigné à une autre boutique
+    if (user.boutiqueId && user.boutiqueId.toString() !== boutiqueId) {
+      throw new Error('Cet utilisateur est déjà assigné à une autre boutique');
+    }
+    
+    // Mettre à jour le boutiqueId de l'utilisateur
+    user.boutiqueId = boutiqueId;
+    await user.save();
+    
+    console.log(` [BoutiqueService] Utilisateur ${user.nom} assigné à ${boutique.nom}`);
+    return user;
+    
+  } catch (error) {
+    console.error(' [BoutiqueService] Erreur assignUserToBoutique:', error.message);
+    throw error;
+  }
+};
+
+
+
+
 // ============================================
 // EXPORT
 // ============================================
@@ -275,4 +328,5 @@ module.exports = {
   activerBoutique,
   desactiverBoutique,
   getBoutiquesPaginated,
+  assignUserToBoutique,
 };

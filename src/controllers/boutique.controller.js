@@ -14,6 +14,7 @@ const {
   activerBoutique,
   desactiverBoutique,
   getBoutiquesPaginated,
+  assignUserToBoutique,
 } = require("../services/boutique.service");
 
 // ============================================
@@ -200,6 +201,57 @@ const getListPaginated = async (req, res) => {
 };
 
 
+
+
+
+/**
+ * @desc    Assigner un utilisateur boutique à une boutique
+ * @route   POST /api/boutiques/:id/assign-user
+ * @access  Private/Admin
+ */
+const assignUser = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const { id: boutiqueId } = req.params;
+
+    // Validation des données
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: "L'ID de l'utilisateur est requis",
+      });
+    }
+
+    // Appeler le service
+    const user = await assignUserToBoutique(boutiqueId, userId);
+
+    res.json({
+      success: true,
+      message: "Utilisateur assigné à la boutique avec succès",
+      user,
+    });
+  } catch (error) {
+    if (
+      error.message.includes("non trouvée") ||
+      error.message.includes("non trouvé")
+    ) {
+      return res.status(404).json({ success: false, error: error.message });
+    }
+    if (
+      error.message.includes("rôle") ||
+      error.message.includes("déjà assigné")
+    ) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+};
+
+
+
+
+
+
 // ============================================
 // EXPORT
 // ============================================
@@ -216,4 +268,5 @@ module.exports = {
   activate,
   deactivate,
   getListPaginated,
+  assignUser,
 };

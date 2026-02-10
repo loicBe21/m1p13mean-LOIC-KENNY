@@ -17,8 +17,10 @@ const {
   activate,
   deactivate,
   getListPaginated,
+  assignUser,
 } = require("../controllers/boutique.controller");
 const authJwtMiddleware = require("../middlewares/authJwt.middelware");
+const authorizeRoles = require("../middlewares/authorizeRoles.middelware");
 
 // ============================================
 // PROTECTION DE TOUTES LES ROUTES
@@ -41,6 +43,13 @@ router.put("/:id", update); // Mettre à jour
 router.delete("/:id", remove); // Supprimer
 router.patch("/:id/activate", activate); // Activer
 router.patch("/:id/deactivate", deactivate); // Désactiver
+
+/**
+ * @route   POST /api/boutiques/:id/assign-user
+ * @desc    Assigner un utilisateur boutique à une boutique
+ * @access  Private/Admin
+ */
+router.post('/:id/assign-user', authJwtMiddleware, authorizeRoles('admin'), assignUser);
 
 // ============================================
 // EXPORT
