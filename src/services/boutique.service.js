@@ -3,7 +3,7 @@
 // Service Boutique - Logique métier centralisée
 // ============================================
 
-const Boutique = require("../models/boutique");
+const Boutique = require("../models/Boutique");
 const User = require("../models/User");
 const paginateAndFilter = require("../utils/paginate");
 

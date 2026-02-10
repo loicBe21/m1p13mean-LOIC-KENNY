@@ -6,6 +6,7 @@ const routeNotFoundMiddelware = require("./middlewares/baseMiddelware");
 
 const healthRoutes = require("./routes/health.routes");
 const boutiqueRoutes = require("./routes/boutique.routes");
+const categorieRoutes = require("./routes/categorie.routes");
 const authRoutes = require("./routes/auth.routes");
 
 
@@ -29,7 +30,11 @@ app.use("/api/auth", authRoutes);
 boutiques routes
 */
 
-app.use("/api/boutiques", boutiqueRoutes)
+app.use("/api/boutiques", boutiqueRoutes);
+
+app.use("/api/categories", categorieRoutes);
+
+
 
 
 
