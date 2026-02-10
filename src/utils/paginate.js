@@ -51,6 +51,8 @@ const paginateAndFilter = async (
     // Obtenir les champs valides du schéma
     const schemaPaths = Object.keys(model.schema.paths);
 
+    console.log(schemaPaths)
+
     // Filtrer uniquement les champs existants dans le schéma
     const validFilters = {};
     for (const [key, value] of Object.entries(filters)) {
@@ -73,8 +75,12 @@ const paginateAndFilter = async (
       }
     }
 
+    
+
     // Fusionner avec les filtres par défaut
     const queryFilters = { ...defaultFilters, ...validFilters };
+
+    console.log(queryFilters)
 
     // ============================================
     // EXÉCUTION DES REQUÊTES
