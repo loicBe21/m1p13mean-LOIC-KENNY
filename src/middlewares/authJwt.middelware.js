@@ -1,5 +1,5 @@
 // ============================================
-// src/middleware/auth/authJwt.middleware.js
+// src/middleware/authJwt.middleware.js
 // Middleware d'authentification JWT
 // ============================================
 
@@ -11,11 +11,9 @@ require("dotenv").config();
 
 
 /**
- * 
- *
- * 
- * 
- * 
+ * middelware pour les requete proteger 
+ * charge l'objet user dans le req pour chaque url proteger coté serveur 
+ * decodage du token
  */
 
 const authJwtMiddleware = async (req, res, next) => {

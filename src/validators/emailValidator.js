@@ -1,9 +1,16 @@
 // src/validators/emailValidator.js
 
+
+/**
+ * validation partagé pour les email
+ * a consulter aussi le module /src/validators/constants.js  pour voir les constant utilisé pour la validation
+ *  tout les methodes de validation doit retourné un objet de configuration mongoose
+ */
+
 const { PATTERNS, ERROR_MESSAGES } = require("./constants");
 
 /**
- * Validateur email réutilisable
+ * Validateur email 
  * @param {Object} options - Options de validation
  * @param {boolean} options.required - Champ obligatoire
  * @param {boolean} options.unique - Valeur unique

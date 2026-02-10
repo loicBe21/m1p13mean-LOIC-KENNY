@@ -1,5 +1,4 @@
 // ============================================
-// src/utils/paginate.js
 // Utilitaire de pagination et filtres simples
 // ============================================
 

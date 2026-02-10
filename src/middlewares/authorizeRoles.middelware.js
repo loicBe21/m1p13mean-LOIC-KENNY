@@ -1,7 +1,18 @@
 // ============================================
-// src/middleware/auth/authorizeRoles.middleware.js
+// src/middleware/authorizeRoles.middleware.js
 // Middleware d'autorisation par rôle
 // ============================================
+
+
+/**
+ * 
+ * @param  {...any} roles 
+ * @returns {next}
+ * 
+ * Middelware pour un role precis ex  (role admin et boutique uniquement etc)
+ * verifie le role de l'user dans l'objet req 
+ * a appeler apres authJwt.middelware
+ */
 
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {

@@ -1,5 +1,5 @@
 // ============================================
-// src/middleware/validators/signup.validator.js
+// src/middleware/signup.validator.js
 // Validation inscription
 // ============================================
 
