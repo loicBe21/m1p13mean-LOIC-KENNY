@@ -5,7 +5,8 @@ const myLoggerMiddelware = require("./middlewares/logger");
 const routeNotFoundMiddelware = require("./middlewares/baseMiddelware");
 
 const healthRoutes = require("./routes/health.routes");
-const boutiqueRoutes = require("./routes/boutiqueRoutes");
+const boutiqueRoutes = require("./routes/boutique.routes");
+const authRoutes = require("./routes/auth.routes");
 
 
 
@@ -21,6 +22,8 @@ if (process.env.NODE_ENV === "development") {
 }
 
 app.use("/api/health", healthRoutes);
+
+app.use("/api/auth", authRoutes);
 
 /*
 boutiques routes
