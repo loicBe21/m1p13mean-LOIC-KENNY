@@ -31,6 +31,13 @@ const boutiqueSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    categories: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Categorie",
+        required: false,
+      },
+    ],
   },
   {
     timestamps: true,

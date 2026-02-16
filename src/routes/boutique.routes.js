@@ -18,6 +18,8 @@ const {
   deactivate,
   getListPaginated,
   assignUser,
+  createWithRelations,
+  updateWithRelations
 } = require("../controllers/boutique.controller");
 const authJwtMiddleware = require("../middlewares/authJwt.middelware");
 const authorizeRoles = require("../middlewares/authorizeRoles.middelware");
@@ -50,6 +52,32 @@ router.patch("/:id/deactivate", deactivate); // Désactiver
  * @access  Private/Admin
  */
 router.post('/:id/assign-user', authJwtMiddleware, authorizeRoles('admin'), assignUser);
+
+
+/**
+ * @route   POST /api/boutiques/with-relations
+ * @desc    Créer une boutique avec utilisateurs et catégories associés
+ * @access  Private/Admin
+ */
+router.post(
+  '/with-relations', 
+  authJwtMiddleware, 
+  authorizeRoles('admin'), 
+  createWithRelations
+);
+
+/**
+ * @route   PUT /api/boutiques/:id/with-relations
+ * @desc    Mettre à jour une boutique avec gestion complète des relations
+ * @access  Private/Admin
+ */
+router.put(
+  '/:id/with-relations', 
+  authJwtMiddleware, 
+  authorizeRoles('admin'), 
+  updateWithRelations
+);
+
 
 // ============================================
 // EXPORT
