@@ -5,7 +5,10 @@
 
 const Boutique = require("../models/Boutique");
 const User = require("../models/User");
+const Categorie = require("../models/Categorie");
+
 const paginateAndFilter = require("../utils/paginate");
+const mongoose = require("mongoose");
 
 /**
  * Créer une nouvelle boutique
