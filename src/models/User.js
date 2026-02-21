@@ -12,7 +12,7 @@ const {  phoneSimple, emailRequired } = require("../validators");
 
 /**
  * shema de gestion Users ( Utilisateur interne + Client)
- * roles ("Admin" | "Boutique" | "Client")
+ * roles ("Admin" | "Boutique" | "boutique_en_attente" | "Client")
  * si client ou  admin => Boutique_id null else Boutique_id != null 
  * email / telephone requis uniquement si  client
  * 
@@ -39,7 +39,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: {
-        values: ["admin", "boutique", "client"],
+        values: ["admin", "boutique", "client", "boutique_en_attente"],
         message: "Le rôle doit être admin, boutique ou client",
       },
       default: "client",

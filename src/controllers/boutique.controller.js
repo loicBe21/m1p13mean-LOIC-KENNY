@@ -15,6 +15,8 @@ const {
   desactiverBoutique,
   getBoutiquesPaginated,
   assignUserToBoutique,
+  createBoutiqueWithRelations,
+  updateBoutiqueWithRelations,
 } = require("../services/boutique.service");
 
 // ============================================
@@ -22,7 +24,7 @@ const {
 // ============================================
 
 
-
+const mongoose = require("mongoose");
 
 
 
@@ -250,6 +252,106 @@ const assignUser = async (req, res) => {
 
 
 
+/**
+ * @desc    Créer une boutique avec utilisateurs et catégories
+ * @route   POST /api/boutiques/with-relations
+ * @access  Private/Admin
+ */
+const createWithRelations = async (req, res) => {
+  try {
+    const { users = [], categories = [], ...boutiqueData } = req.body;
+    
+    // Validation basique
+    if (!boutiqueData.nom || !boutiqueData.email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Le nom et l\'email sont requis'
+      });
+    }
+    
+    // Conversion des IDs en strings
+    const userIds = Array.isArray(users) ? users.map(id => id.toString()) : [];
+    const categoryIds = Array.isArray(categories) ? categories.map(id => id.toString()) : [];
+    
+    // Création avec relations
+    const result = await createBoutiqueWithRelations(
+      boutiqueData,
+      userIds,
+      categoryIds
+    );
+    
+    res.status(201).json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+    
+  } catch (error) {
+    console.error('❌ [BoutiqueWithRelationsController] Erreur createWithRelations:', error.message);
+    
+    if (error.message.includes('invalides') || 
+        error.message.includes('non éligibles') || 
+        error.message.includes('non trouvée')) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erreur lors de la création de la boutique avec relations' 
+    });
+  }
+};
+
+/**
+ * @desc    Mettre à jour une boutique avec gestion complète des relations
+ * @route   PUT /api/boutiques/:id/with-relations
+ * @access  Private/Admin
+ */
+const updateWithRelations = async (req, res) => {
+  try {
+    const { users = null, categories = null, ...boutiqueData } = req.body;
+    const { id } = req.params;
+    
+    // Conversion des IDs
+    const userIds = users !== null && Array.isArray(users) 
+      ? users.map(id => id.toString()) 
+      : null;
+      
+    const categoryIds = categories !== null && Array.isArray(categories) 
+      ? categories.map(id => id.toString()) 
+      : null;
+    
+    // Mise à jour avec relations
+    const result = await updateBoutiqueWithRelations(
+      id,
+      boutiqueData,
+      userIds,
+      categoryIds
+    );
+    
+    res.json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+    
+  } catch (error) {
+    console.error('❌ [BoutiqueWithRelationsController] Erreur updateWithRelations:', error.message);
+    
+    if (error.message.includes('invalides') || 
+        error.message.includes('non éligibles') || 
+        error.message.includes('non trouvée')) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erreur lors de la mise à jour de la boutique avec relations' 
+    });
+  }
+};
+
+
 
 
 // ============================================
@@ -269,4 +371,6 @@ module.exports = {
   deactivate,
   getListPaginated,
   assignUser,
+  updateWithRelations,
+  createWithRelations,
 };

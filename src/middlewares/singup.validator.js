@@ -28,7 +28,7 @@ const signupValidator = async (req, res, next) => {
     }
 
     // Validation rôle
-    const validRoles = ["admin", "boutique", "client"];
+    const validRoles = ["admin", "boutique", "client", "boutique_en_attente"];
     const userRole = role || "client";
 
     if (!validRoles.includes(userRole)) {

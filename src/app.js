@@ -8,6 +8,7 @@ const healthRoutes = require("./routes/health.routes");
 const boutiqueRoutes = require("./routes/boutique.routes");
 const categorieRoutes = require("./routes/categorie.routes");
 const authRoutes = require("./routes/auth.routes");
+const userRoutes = require("./routes/user.routes");
 
 
 
@@ -33,6 +34,8 @@ boutiques routes
 app.use("/api/boutiques", boutiqueRoutes);
 
 app.use("/api/categories", categorieRoutes);
+
+app.use("/api/users" , userRoutes);
 
 
 
