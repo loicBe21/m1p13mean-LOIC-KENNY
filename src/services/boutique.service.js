@@ -10,6 +10,14 @@ const Categorie = require("../models/Categorie");
 const paginateAndFilter = require("../utils/paginate");
 const mongoose = require("mongoose");
 
+
+const {
+  validateObjectIds,
+  validateActiveDocuments,
+  validateEligibleUsers,
+  ValidationError,
+} = require("../utils/validationHelpers");
+
 /**
  * Créer une nouvelle boutique
  * @param {Object} boutiqueData - Données de la boutique
@@ -316,68 +324,48 @@ const assignUserToBoutique = async (boutiqueId, userId) => {
 
 
 
-// ════════════════════════════════════════════════════════════════
-// FONCTIONS PRIVÉES SPÉCIALISÉES POUR LA CREATIO ET UPDATE BOUTIQUE AVEC LES RELATION CATEGORIE ET USERS
-// ════════════════════════════════════════════════════════════════
 
 /**
- * Valide l'existence et l'activité des catégories
- * @private
+ * Valider et préparer les catégories pour assignation
  */
-const _validateCategories = async (categoryIds, session) => {
-  if (categoryIds.length === 0) return;
+const _prepareCategories = async (categoryIds = [], session) => {
+  if (categoryIds.length === 0) return [];
   
-  const categoriesValid = await Categorie.find(
-    { _id: { $in: categoryIds }, actif: true },
-    null,
-    { session }
-  );
+  validateObjectIds(categoryIds, 'catégorie');
+  await validateActiveDocuments(Categorie, categoryIds, 'Catégories', session);
   
-  if (categoriesValid.length !== categoryIds.length) {
-    const invalidCount = categoryIds.length - categoriesValid.length;
-    throw new Error(`"${invalidCount}" catégorie(s) invalide(s) ou inactives`);
-  }
-  
-  console.log(` ${categoriesValid.length} catégorie(s) validée(s)`);
+  return categoryIds;
 };
 
 /**
- * Crée la boutique avec les catégories associées
- * @private
+ * Valider et préparer les utilisateurs pour assignation
  */
-const _createBoutique = async (boutiqueData, categoryIds, session) => {
+const _prepareUsers = async (userIds = [], session) => {
+  if (userIds.length === 0) return [];
+  
+  const eligibleUsers = await validateEligibleUsers(userIds, session);
+  return eligibleUsers.map(user => user._id);
+};
+
+/**
+ * Créer la boutique dans la transaction
+ */
+const _createBoutiqueInTransaction = async (boutiqueData, categoryIds, session) => {
   const [boutique] = await Boutique.create([{
     ...boutiqueData,
     categories: categoryIds
   }], { session });
   
-  console.log(` Boutique créée: ${boutique._id} (${boutique.nom})`);
+  console.log(`✅ Boutique créée: ${boutique._id} (${boutique.nom})`);
   return boutique;
 };
 
 /**
- * Assigner les utilisateurs à la boutique (rôles "en_attente" → "boutique")
- * @private
+ * Assigner les utilisateurs à la boutique dans la transaction
  */
-const _assignUsersToBoutique = async (userIds, boutiqueId, session) => {
+const _assignUsersInTransaction = async (userIds, boutiqueId, session) => {
   if (userIds.length === 0) return 0;
   
-  // Vérifier éligibilité des utilisateurs
-  const usersEligibles = await User.find({
-    _id: { $in: userIds },
-    $or: [
-      { role: 'boutique_en_attente' },
-      { role: 'boutique', boutiqueId: null }
-    ],
-    actif: true
-  }).session(session);
-  
-  if (usersEligibles.length !== userIds.length) {
-    const ineligibles = userIds.length - usersEligibles.length;
-    throw new Error(`"${ineligibles}" utilisateur(s) non éligible(s) à l'assignation`);
-  }
-  
-  // Mise à jour atomique
   const result = await User.updateMany(
     { _id: { $in: userIds } },
     { 
@@ -389,200 +377,135 @@ const _assignUsersToBoutique = async (userIds, boutiqueId, session) => {
     { session }
   );
   
-  console.log(` ${result.modifiedCount} utilisateur(s) assigné(s)`);
+  console.log(`✅ ${result.modifiedCount} utilisateur(s) assigné(s)`);
   return result.modifiedCount;
 };
 
 /**
- * Récupère la boutique avec relations peuplées
- * @private
+ * Récupérer la boutique enrichie avec relations
  */
-const _getBoutiqueWithRelations = async (boutiqueId) => {
+const _getEnrichedBoutique = async (boutiqueId) => {
   return await Boutique.findById(boutiqueId)
     .populate('categories', 'nom description')
     .lean();
 };
 
-/**
- * Gérer la mise à jour des utilisateurs (ajout/suppression)
- * @private
- */
-const _updateUsersRelations = async (boutiqueId, newUserIds, session) => {
-  if (newUserIds === null) return { added: 0, removed: 0 };
-  
-  // Récupérer les utilisateurs actuellement assignés
-  const usersActuels = await User.find({ 
-    boutiqueId: boutiqueId, 
-    role: 'boutique' 
-  }).session(session);
-  
-  const userIdsActuels = usersActuels.map(u => u._id.toString());
-  
-  // Utilisateurs à supprimer
-  const toRemove = userIdsActuels.filter(id => !newUserIds.includes(id));
-  let removed = 0;
-  if (toRemove.length > 0) {
-    const result = await User.updateMany(
-      { _id: { $in: toRemove } },
-      { boutiqueId: null },
-      { session }
-    );
-    removed = result.modifiedCount;
-    console.log(`  ${removed} utilisateur(s) retiré(s)`);
-  }
-  
-  // Utilisateurs à ajouter
-  const toAdd = newUserIds.filter(id => !userIdsActuels.includes(id));
-  let added = 0;
-  if (toAdd.length > 0) {
-    // Vérifier éligibilité
-    const usersEligibles = await User.find({
-      _id: { $in: toAdd },
-      $or: [
-        { role: 'boutique_en_attente' },
-        { role: 'boutique', boutiqueId: null }
-      ],
-      actif: true
-    }).session(session);
-    
-    if (usersEligibles.length !== toAdd.length) {
-      throw new Error('Certains utilisateurs ne sont pas éligibles à l\'assignation');
-    }
-    
-    const result = await User.updateMany(
-      { _id: { $in: toAdd } },
-      { 
-        $set: { 
-          role: 'boutique',
-          boutiqueId: boutiqueId 
-        } 
-      },
-      { session }
-    );
-    added = result.modifiedCount;
-    console.log(` ${added} utilisateur(s) ajouté(s)`);
-  }
-  
-  return { added, removed };
-};
-
 // ════════════════════════════════════════════════════════════════
-// MÉTHODES PUBLIQUES
+// MÉTHODES PUBLIQUES - CLEAN & ROBUSTES
 // ════════════════════════════════════════════════════════════════
 
 /**
- * Créer une boutique avec gestion complète des relations
- * @param {Object} boutiqueData - Données de la boutique
- * @param {Array} userIds - Liste d'IDs d'utilisateurs à assigner
- * @param {Array} categoryIds - Liste d'IDs de catégories
- * @returns {Object} Résultat structuré avec statistiques
+ * Créer une boutique avec relations optionnelles
+ * @workflow Flexible: users/categories optionnels
+ * @security Uniquement users "boutique_en_attente" actifs
+ * @transaction Atomique: tout ou rien
  */
 const createBoutiqueWithRelations = async (boutiqueData, userIds = [], categoryIds = []) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   
-  console.log('\n' + ''.repeat(30));
-  console.log(` DÉMARRAGE CRÉATION BOUTIQUE : ${boutiqueData.nom}`);
-  console.log(`   Utilisateurs: ${userIds.length} | Catégories: ${categoryIds.length}`);
-  console.log(''.repeat(30) + '\n');
+  console.log('\n' + '🔧'.repeat(35));
+  console.log(`🚀 CRÉATION BOUTIQUE : ${boutiqueData.nom || 'SANS NOM'}`);
+  console.log(`   Users: ${userIds.length} | Catégories: ${categoryIds.length}`);
+  console.log('🔧'.repeat(35) + '\n');
 
   try {
     // ════════════════════════════════════════════════════════════
-    // FLUX PRINCIPAL : APPEL DES FONCTIONS SPÉCIALISÉES
+    // VALIDATION PRÉALABLE (rapide, avant transaction)
     // ════════════════════════════════════════════════════════════
     
-    await _validateCategories(categoryIds, session);
-    const boutique = await _createBoutique(boutiqueData, categoryIds, session);
-    const usersAssignes = await _assignUsersToBoutique(userIds, boutique._id, session);
+    validateObjectIds(userIds, 'utilisateur');
+    validateObjectIds(categoryIds, 'catégorie');
+    
+    // ════════════════════════════════════════════════════════════
+    // OPÉRATIONS DANS LA TRANSACTION
+    // ════════════════════════════════════════════════════════════
+    
+    const preparedCategories = await _prepareCategories(categoryIds, session);
+    const preparedUsers = await _prepareUsers(userIds, session);
+    
+    const boutique = await _createBoutiqueInTransaction(
+      boutiqueData, 
+      preparedCategories, 
+      session
+    );
+    
+    const usersAssignes = await _assignUsersInTransaction(
+      preparedUsers, 
+      boutique._id, 
+      session
+    );
     
     await session.commitTransaction();
     session.endSession();
     
-    const boutiqueComplete = await _getBoutiqueWithRelations(boutique._id);
-    
     // ════════════════════════════════════════════════════════════
-    // RETOUR STRUCTURÉ ET CLAIR
+    // RÉPONSE STRUCTURÉE
     // ════════════════════════════════════════════════════════════
     
-    console.log('\n' + ''.repeat(30));
-    console.log(' CRÉATION BOUTIQUE TERMINÉE AVEC SUCCÈS');
-    console.log(''.repeat(30) + '\n');
+    const boutiqueComplete = await _getEnrichedBoutique(boutique._id);
+    
+    console.log('\n' + '✅'.repeat(35));
+    console.log(`✅ BOUTIQUE CRÉÉE : ${boutique.nom}`);
+    console.log(`   Users assignés: ${usersAssignes}`);
+    console.log(`   Catégories: ${preparedCategories.length}`);
+    console.log('✅'.repeat(35) + '\n');
     
     return {
       success: true,
       boutique: boutiqueComplete,
       statistiques: {
         usersAssignes,
-        categoriesAssignees: categoryIds.length,
-        totalOperations: usersAssignes + categoryIds.length
+        categoriesAssignees: preparedCategories.length
       },
-      message: `Boutique "${boutique.nom}" créée avec ${usersAssignes} utilisateur(s) et ${categoryIds.length} catégorie(s)`
+      message: `Boutique "${boutique.nom}" créée avec succès`
     };
     
   } catch (error) {
-    // ════════════════════════════════════════════════════════════
-    // GESTION D'ERREURS CENTRALISÉE
-    // ════════════════════════════════════════════════════════════
-    
     await session.abortTransaction();
     session.endSession();
     
-    const context = {
-      boutique: boutiqueData?.nom || 'INCONNUE',
-      usersCount: userIds?.length || 0,
-      categoriesCount: categoryIds?.length || 0,
-      errorType: error.name,
-      errorMessage: error.message
-    };
-    
-    console.error('\n ÉCHEC CRÉATION BOUTIQUE');
-    console.error(''.repeat(30));
-    console.error('Contexte:', JSON.stringify(context, null, 2));
-    console.error('Erreur:', error.stack || error.message);
-    console.error(''.repeat(30) + '\n');
-    
-    throw new Error(`Impossible de créer la boutique "${context.boutique}": ${error.message}`);
+    // Relancer pour traitement par le contrôleur
+    throw error;
   }
 };
 
 /**
- * Mettre à jour une boutique avec gestion complète des relations
- * @param {String} id - ID de la boutique
- * @param {Object} boutiqueData - Données de mise à jour
- * @param {Array|null} userIds - Nouvelle liste d'IDs utilisateurs (null = ne pas modifier)
- * @param {Array|null} categoryIds - Nouvelle liste d'IDs catégories (null = ne pas modifier)
- * @returns {Object} Résultat structuré avec statistiques
+ * Mettre à jour une boutique avec gestion fine des relations
+ * @workflow Flexible: users/categories optionnels (null = ne pas modifier)
+ * @security Protection admins, validation stricte éligibilité
+ * @transaction Atomique: tout ou rien
  */
 const updateBoutiqueWithRelations = async (id, boutiqueData, userIds = null, categoryIds = null) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   
-  console.log('\n' + ''.repeat(30));
-  console.log(`  DÉMARRAGE MISE À JOUR BOUTIQUE : ${id}`);
-  console.log(`   Users update: ${userIds !== null ? userIds.length : 'skip'}`);
-  console.log(`   Categories update: ${categoryIds !== null ? categoryIds.length : 'skip'}`);
-  console.log(''.repeat(30) + '\n');
+  console.log('\n' + '✏️'.repeat(35));
+  console.log(`✏️  MISE À JOUR BOUTIQUE : ${id}`);
+  console.log(`   Users update: ${userIds !== null ? userIds.length : 'non modifié'}`);
+  console.log(`   Categories update: ${categoryIds !== null ? categoryIds.length : 'non modifié'}`);
+  console.log('✏️'.repeat(35) + '\n');
 
   try {
     // ════════════════════════════════════════════════════════════
-    // VÉRIFICATION BOUTIQUE EXISTANTE
+    // VÉRIFICATION EXISTENCE BOUTIQUE
     // ════════════════════════════════════════════════════════════
     
     const boutiqueExistante = await Boutique.findById(id).session(session);
     if (!boutiqueExistante) {
-      throw new Error('Boutique non trouvée');
+      throw new ValidationError('Boutique non trouvée', [{ id, reason: 'ID inexistant' }]);
     }
     
-    console.log(` Boutique trouvée: ${boutiqueExistante.nom}`);
-    
     // ════════════════════════════════════════════════════════════
-    // MISE À JOUR DES CATÉGORIES SI FOURNIES
+    // PRÉPARATION DES DONNÉES DE MISE À JOUR
     // ════════════════════════════════════════════════════════════
     
+    let updateData = { ...boutiqueData };
+    
+    // Catégories (null = ne pas modifier)
     if (categoryIds !== null) {
-      await _validateCategories(categoryIds, session);
-      boutiqueData.categories = categoryIds;
-      console.log(` Catégories mises à jour: ${categoryIds.length}`);
+      const preparedCategories = await _prepareCategories(categoryIds, session);
+      updateData.categories = preparedCategories;
     }
     
     // ════════════════════════════════════════════════════════════
@@ -591,43 +514,100 @@ const updateBoutiqueWithRelations = async (id, boutiqueData, userIds = null, cat
     
     const boutique = await Boutique.findByIdAndUpdate(
       id,
-      boutiqueData,
+      updateData,
       { new: true, runValidators: true, session }
     );
     
-    console.log(` Boutique mise à jour: ${boutique.nom}`);
-    
-    // ════════════════════════════════════════════════════════════
-    // GESTION DES UTILISATEURS SI FOURNIS
-    // ════════════════════════════════════════════════════════════
-    
-    let usersUpdate = { added: 0, removed: 0 };
-    if (userIds !== null) {
-      usersUpdate = await _updateUsersRelations(id, userIds, session);
-      console.log(` Utilisateurs mis à jour: +${usersUpdate.added} -${usersUpdate.removed}`);
+    if (!boutique) {
+      throw new ValidationError('Échec mise à jour boutique', []);
     }
     
+    console.log(`✅ Boutique mise à jour: ${boutique.nom}`);
+    
     // ════════════════════════════════════════════════════════════
-    // COMMIT ET RETOUR
+    // GESTION DES UTILISATEURS (null = ne pas modifier)
     // ════════════════════════════════════════════════════════════
+    
+    let usersStats = { added: 0, removed: 0 };
+    
+    if (userIds !== null) {
+      // Récupérer utilisateurs actuellement assignés
+      const usersActuels = await User.find({ 
+        boutiqueId: id, 
+        role: 'boutique' 
+      }).session(session);
+      
+      const userIdsActuels = usersActuels.map(u => u._id.toString());
+      
+      // Utilisateurs à supprimer (protection admins)
+      const toRemove = userIdsActuels.filter(id => !userIds.includes(id));
+      if (toRemove.length > 0) {
+        const admins = await User.find({ 
+          _id: { $in: toRemove }, 
+          role: 'admin' 
+        }).session(session);
+        
+        if (admins.length > 0) {
+          throw new ValidationError(
+            'Protection administrateur',
+            admins.map(admin => ({
+              id: admin._id,
+              nom: admin.nom,
+              reason: 'Impossible de retirer un administrateur de sa boutique'
+            }))
+          );
+        }
+        
+        await User.updateMany(
+          { _id: { $in: toRemove } },
+          { boutiqueId: null },
+          { session }
+        );
+        usersStats.removed = toRemove.length;
+        console.log(`🗑️  ${usersStats.removed} utilisateur(s) retiré(s)`);
+      }
+      
+      // Utilisateurs à ajouter
+      const toAdd = userIds.filter(id => !userIdsActuels.includes(id));
+      if (toAdd.length > 0) {
+        const preparedUsers = await _prepareUsers(toAdd, session);
+        await User.updateMany(
+          { _id: { $in: preparedUsers } },
+          { 
+            $set: { 
+              role: 'boutique',
+              boutiqueId: id 
+            } 
+          },
+          { session }
+        );
+        usersStats.added = preparedUsers.length;
+        console.log(`➕ ${usersStats.added} utilisateur(s) ajouté(s)`);
+      }
+    }
     
     await session.commitTransaction();
     session.endSession();
     
-    const boutiqueComplete = await _getBoutiqueWithRelations(id);
+    // ════════════════════════════════════════════════════════════
+    // RÉPONSE STRUCTURÉE
+    // ════════════════════════════════════════════════════════════
     
-    console.log('\n' + ''.repeat(30));
-    console.log(' MISE À JOUR BOUTIQUE TERMINÉE AVEC SUCCÈS');
-    console.log(''.repeat(30) + '\n');
+    const boutiqueComplete = await _getEnrichedBoutique(id);
+    
+    console.log('\n' + '✅'.repeat(35));
+    console.log(`✅ BOUTIQUE MISE À JOUR : ${boutique.nom}`);
+    console.log(`   Users: +${usersStats.added} -${usersStats.removed}`);
+    console.log(`   Catégories: ${boutique.categories?.length || 0}`);
+    console.log('✅'.repeat(35) + '\n');
     
     return {
       success: true,
       boutique: boutiqueComplete,
       statistiques: {
-        usersAdded: usersUpdate.added,
-        usersRemoved: usersUpdate.removed,
-        categoriesUpdated: categoryIds !== null ? categoryIds.length : null,
-        totalChanges: usersUpdate.added + usersUpdate.removed + (categoryIds?.length || 0)
+        usersAdded: usersStats.added,
+        usersRemoved: usersStats.removed,
+        categoriesCount: boutique.categories?.length || 0
       },
       message: `Boutique "${boutique.nom}" mise à jour avec succès`
     };
@@ -636,22 +616,14 @@ const updateBoutiqueWithRelations = async (id, boutiqueData, userIds = null, cat
     await session.abortTransaction();
     session.endSession();
     
-    console.error('\n' + ''.repeat(30));
-    console.error(' ÉCHEC MISE À JOUR BOUTIQUE');
-    console.error(''.repeat(30));
-    console.error('Erreur:', error.message);
-    console.error(''.repeat(30) + '\n');
-    
-    throw new Error(`Impossible de mettre à jour la boutique: ${error.message}`);
+    // Relancer pour traitement par le contrôleur
+    throw error;
   }
 };
 
 
 
 
-// ============================================
-// EXPORT
-// ============================================
 
 module.exports = {
   createBoutique,
