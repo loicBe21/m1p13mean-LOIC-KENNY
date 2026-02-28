@@ -1,3 +1,0 @@
-PORT=3000
-MONGODB_URI=mongodb://127.0.0.1:27017/meandb
-JWT_SECRET=9f3c7b8a4e2d1f6c8a9b0e7d5c3f1a2b6e8d4c7f9a1b3e5d6c8f0a2b4e6d8c1
