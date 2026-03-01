@@ -5,11 +5,11 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import auth from "./routes/auth.routes.js";
+import categorie from "./routes/categorie.routes.js";
 
 const app = express();
 
 // Parser JSON avant les routes
-app.use(express.json());
 
 // CORS
 app.use(cors({
@@ -18,8 +18,18 @@ app.use(cors({
   credentials: true
 }));
 
+
+app.use(express.json({ limit: '100mb' }));       // taille maximale du corps JSON
+app.use(express.urlencoded({ limit: '100mb', extended: true })); // pour les formulaires urlencoded
+
+
 // Routes
 app.use("/api/auth", auth);
+app.use("/api/categories", categorie);
+
+
+
+
 
 // Vérifie si la variable d'environnement est bien chargée
 console.log("Mongo URI:", process.env.MONGODB_URI);
