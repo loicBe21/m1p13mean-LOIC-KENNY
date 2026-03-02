@@ -1,4 +1,9 @@
 require("./config/env");
+const express = require("express");
+const cors = require("cors");
+
+const authRoutes = require("./routes/auth.routes");
+const categorieRoutes = require("./routes/categorie.routes");
 
 const app = require("./app");
 const { PORT, NODE_ENV } = require("./config/env");
@@ -12,3 +17,16 @@ connectDB().then(() => {
   });
 });
 
+
+app.use(
+  cors({
+    origin: "http://localhost:4200",
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: "100mb" }));
+app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+
+app.use("/api/auth", authRoutes);
+app.use("/api/categories", categorieRoutes);
