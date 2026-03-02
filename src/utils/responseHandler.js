@@ -31,6 +31,25 @@ const success = (res, statusCode = 200, message, data = null, meta = null) => {
  * @param {number} fallbackStatusCode - Code par défaut si non spécifié
  */
 const error = (res, error, fallbackStatusCode = 400) => {
+  // ✅ TRANSFORMATION SPÉCIALE POUR LES ERREURS MONGOOSE
+  if (error.name === "ValidationError" && !error.details) {
+    const details = Object.values(error.errors).map((err) => ({
+      field: err.path,
+      reason: err.message
+        .replace(/^[A-Z][a-z]+ validation failed: [a-z._]+\s*/, "")
+        .replace("Path `", "")
+        .replace("` ", "")
+        .replace(/\.$/, ""),
+    }));
+
+    return res.status(400).json({
+      success: false,
+      message: "Données invalides",
+      errors: details,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   // Extraire statusCode (priorité: ApiError > fallback)
   const statusCode = error.statusCode || fallbackStatusCode;
 
