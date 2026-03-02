@@ -11,4 +11,3 @@ connectDB().then(() => {
     console.log(`🚀 API running on port ${PORT} (${NODE_ENV})`);
   });
 });
-

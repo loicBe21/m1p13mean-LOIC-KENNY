@@ -33,7 +33,7 @@ const categorieSchema = new mongoose.Schema(
         },
         message: "Image invalide. Format attendu : image/type;base64,.."
       }
-    },
+    }, 
     actif: {
       type: Boolean,
       default: true,
