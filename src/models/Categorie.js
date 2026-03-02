@@ -25,15 +25,7 @@ const categorieSchema = new mongoose.Schema(
       trim: true,
       maxlength: [500, "La description ne peut pas dépasser 500 caractères"],
     },
-    image: {
-  type: String,
-  validate: {
-    validator: function(v) {
-      return /^data:image\/[a-zA-Z]+;base64,/.test(v);
-    },
-    message: "Image invalide. Format attendu : image/type;base64,.."
-  }
-},  
+    image: imageSimple, 
     actif: {
       type: Boolean,
       default: true,
