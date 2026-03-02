@@ -1,114 +1,139 @@
 // ============================================
-// Utilitaire de pagination et filtres simples
+// src/utils/paginate.js
+// Pagination robuste - Gère tous les cas (sans filtre, types mixtes)
 // ============================================
 
+require("dotenv").config();
+
+// Récupérer limites depuis .env avec valeurs par défaut sécurisées
+const DEFAULT_PUBLIC_LIMIT =
+  parseInt(process.env.PAGINATION_LIMIT_PUBLIC) || 12;
+const DEFAULT_BACKOFFICE_LIMIT =
+  parseInt(process.env.PAGINATION_LIMIT_BACKOFFICE) || 20;
+const MAX_LIMIT = parseInt(process.env.PAGINATION_MAX_LIMIT) || 50;
+
 /**
- * Fonction utilitaire pour paginer et filtrer une collection MongoDB
- *
- * @param {Model} model - Modèle Mongoose à requêter
- * @param {Object} query - Objet de requête (req.query)
- * @param {Object} defaultFilters - Filtres par défaut (ex: { actif: true })
+ * Nettoyer et normaliser une valeur de filtre
+ * @param {*} value - Valeur à nettoyer (string, number, boolean, etc.)
+ * @returns {*} Valeur nettoyée et typée
+ */
+const cleanFilterValue = (value) => {
+  // Ignorer valeurs vides
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  // Booléens déjà typés → garder tels quels
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  // Nombres déjà typés → garder tels quels
+  if (typeof value === "number") {
+    return value;
+  }
+
+  // ObjectId Mongoose → garder tel quel
+  if (value instanceof require("mongoose").Types.ObjectId) {
+    return value;
+  }
+
+  // Chaînes de caractères → nettoyer et convertir si nécessaire
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    // Conversion booléen
+    if (trimmed.toLowerCase() === "true") return true;
+    if (trimmed.toLowerCase() === "false") return false;
+
+    // Conversion nombre
+    const num = Number(trimmed);
+    if (!isNaN(num) && trimmed !== "") return num;
+
+    // Retourner chaîne nettoyée
+    return trimmed;
+  }
+
+  // Autres types → retourner tel quel (Date, Array, etc.)
+  return value;
+};
+
+/**
+ * Pagination générique robuste
+ * @param {Model} model - Modèle Mongoose
+ * @param {Object} query - Paramètres de requête (page, filtres)
+ * @param {Object} defaultFilters - Filtres par défaut (optionnel)
  * @param {Array} populateFields - Champs à peupler (optionnel)
- * @returns {Object} Résultat paginé avec métadonnées
- *
- * @example
- * const result = await paginateAndFilter(
- *   Boutique,
- *   req.query,
- *   { actif: true },
- *   ['proprietaire']
- * );
+ * @param {String} context - 'public' ou 'backoffice'
+ * @returns {Object} Résultat paginé
  */
 const paginateAndFilter = async (
   model,
-  query,
+  query = {},
   defaultFilters = {},
-  populateFields = []
+  populateFields = [],
+  context = "public"
 ) => {
   try {
     // ============================================
-    // EXTRACTION ET VALIDATION DES PARAMÈTRES
+    // 1. CONFIGURATION PAGINATION
     // ============================================
 
-    // Pagination (valeurs par défaut sécurisées)
-    let page = parseInt(query.page) || 1;
-    let limit = parseInt(query.limit) || 10;
+    // Déterminer limite par défaut selon contexte
+    const defaultLimit =
+      context === "backoffice"
+        ? DEFAULT_BACKOFFICE_LIMIT
+        : DEFAULT_PUBLIC_LIMIT;
 
-    // Sécurité: limites maximales
-    page = Math.max(1, page);
-    limit = Math.min(Math.max(1, limit), 100); // Max 100 éléments par page
+    // Extraire page et limit (sécurisés)
+    const page = Math.max(1, parseInt(query.page) || 1);
+    const limit = Math.min(
+      Math.max(1, parseInt(query.limit) || defaultLimit),
+      MAX_LIMIT
+    );
 
-    // Calcul du skip
     const skip = (page - 1) * limit;
 
     // ============================================
-    // EXTRACTION ET SANITISATION DES FILTRES
+    // 2. CONSTRUCTION FILTRES SÉCURISÉS
     // ============================================
 
-    // Copie des filtres utilisateur (exclure page/limit)
-    const { page: _, limit: __, ...filters } = query;
+    // Combiner filtres par défaut + query (sans page/limit)
+    const { page: _, limit: __, ...rawFilters } = query;
+    const combinedFilters = { ...defaultFilters, ...rawFilters };
 
-    // Obtenir les champs valides du schéma
-    const schemaPaths = Object.keys(model.schema.paths);
-
-    console.log(schemaPaths)
-
-    // Filtrer uniquement les champs existants dans le schéma
+    // Nettoyer chaque valeur de filtre avec gestion de type
     const validFilters = {};
-    for (const [key, value] of Object.entries(filters)) {
-      // Ignorer les champs internes et virtuels
-      if (
-        schemaPaths.includes(key) &&
-        !key.startsWith("_") &&
-        key !== "id" &&
-        value !== undefined &&
-        value !== ""
-      ) {
-        // Conversion automatique des booléens et nombres
-        if (value === "true" || value === "false") {
-          validFilters[key] = value === "true";
-        } else if (!isNaN(value) && value.trim() !== "") {
-          validFilters[key] = Number(value);
-        } else {
-          validFilters[key] = value;
-        }
+    for (const [key, value] of Object.entries(combinedFilters)) {
+      const cleaned = cleanFilterValue(value);
+      if (cleaned !== null) {
+        validFilters[key] = cleaned;
       }
     }
 
-    
-
-    // Fusionner avec les filtres par défaut
-    const queryFilters = { ...defaultFilters, ...validFilters };
-
-    console.log(queryFilters)
-
     // ============================================
-    // EXÉCUTION DES REQUÊTES
+    // 3. EXÉCUTION REQUÊTE
     // ============================================
 
-    // Compter le total de documents (sans pagination)
-    const totalDocuments = await model.countDocuments(queryFilters);
+    // Compter documents (avec filtres nettoyés)
+    const totalDocuments = await model.countDocuments(validFilters);
 
-    // Construire la requête paginée
-    let dbQuery = model.find(queryFilters);
+    // Construire requête
+    let dbQuery = model.find(validFilters);
 
-    // Appliquer le peuplement si spécifié
+    // Appliquer populate si nécessaire
     if (populateFields.length > 0) {
       dbQuery = dbQuery.populate(populateFields);
     }
 
     // Appliquer pagination
-    const documents = await dbQuery
-      .limit(limit)
-      .skip(skip)
-      .lean() // Retourner des objets JS purs (meilleures performances)
-      .exec();
+    const documents = await dbQuery.limit(limit).skip(skip).lean().exec();
 
-    // Calculer le nombre total de pages
+    // Calculer pages totales
     const totalPages = Math.ceil(totalDocuments / limit);
 
     // ============================================
-    // RETOURNER LE RÉSULTAT STRUCTURÉ
+    // 4. RETOUR STRUCTURÉ
     // ============================================
 
     return {
@@ -116,11 +141,16 @@ const paginateAndFilter = async (
       limit,
       totalDocuments,
       totalPages,
-      filtre: validFilters, // Filtres appliqués (sanitisés)
+      filtre: validFilters, // Filtres appliqués (nettoyés)
       documents,
     };
   } catch (error) {
-    console.error(" [PaginateUtil] Erreur:", error.message);
+    console.error("❌ [PaginateUtil] Erreur:", {
+      message: error.message,
+      stack: error.stack?.split("\n").slice(0, 2),
+      query: query,
+      context: context,
+    });
     throw new Error(`Erreur de pagination: ${error.message}`);
   }
 };
