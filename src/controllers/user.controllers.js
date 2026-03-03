@@ -1,7 +1,5 @@
-const {
-    getAllUsers
-} = require("../services/user.service");
-
+const { getAllUsers, getUsersByRole } = require("../services/user.service");
+const { success, error } = require("../utils/responseHandler");
 
 
 const getList = async (req, res) => {
@@ -15,7 +13,21 @@ const getList = async (req, res) => {
     }
 };
 
+const getUserEnAttente = async (req, res) => {
+    try {
+      const users = await getUsersByRole("boutique_en_attente");
+
+      return success(res, 200, "les utilisateur en attente", {
+        users,
+        totalUsers: users.length - 1, 
+      });
+    } catch (err) {
+      return error(res, err);
+    }
+}
+
 
 module.exports = {
-    getList
+  getList,
+  getUserEnAttente,
 };

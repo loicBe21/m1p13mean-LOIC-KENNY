@@ -3,7 +3,8 @@ const router = express.Router();
 
 
 const {
-    getList
+  getList,
+  getUserEnAttente,
 } = require("../controllers/user.controllers");
 
 
@@ -21,7 +22,7 @@ router.use(authJwtMiddleware);
 
 
 router.get("/list", getList);
-
+router.get("/enAttente", getUserEnAttente);
 
 
 module.exports = router;

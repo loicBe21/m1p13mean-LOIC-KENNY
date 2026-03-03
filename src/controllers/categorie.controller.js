@@ -3,6 +3,8 @@
 // Contrôleur Catégorie - Interface HTTP légère
 // ============================================
 
+const { success, error } = require("../utils/responseHandler");
+
 const {
   createCategorie,
   getCategoriesPaginated,
@@ -13,6 +15,7 @@ const {
   desactiverCategorie,
   getCategoriesActives,
   getCategoriesInactives,
+  getCategoriesWithProductCount,
 } = require("../services/categorie.service");
 
 // ============================================
@@ -142,6 +145,31 @@ const getActives = async (req, res) => {
   }
 };
 
+
+
+
+/**
+ * GET /api/categories/public/with-count
+ * Récupérer les catégories avec comptage produits (public)
+ */
+const getCategoriesWithCount = async (req, res) => {
+  try {
+    const categories = await getCategoriesWithProductCount();
+    
+    return success(res, 200, 'Catégories récupérées avec succès', {
+      categories,
+      totalCategories: categories.length - 1, // Exclut "Tous les produits"
+      totalProducts: categories[0].produitCount
+    });
+    
+  } catch (err) {
+    return error(res, err);
+  }
+};
+
+
+
+
 const getInactives = async (req, res) => {
   try {
     const categories = await getCategoriesInactives();
@@ -165,4 +193,5 @@ module.exports = {
   deactivate,
   getActives,
   getInactives,
+  getCategoriesWithCount,
 };

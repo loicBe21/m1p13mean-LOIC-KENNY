@@ -10,6 +10,8 @@ const categorieRoutes = require("./routes/categorie.routes");
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const produitRoutes = require("./routes/produit.routes");
+const orderRoutes = require("./routes/order.routes");
+const cartRoutes = require("./routes/cart.routes");
 
 
 
@@ -39,6 +41,13 @@ app.use("/api/categories", categorieRoutes);
 app.use("/api/users" , userRoutes);
 
 app.use("/api/produits", produitRoutes);
+
+
+// Routes commandes (back-office)
+app.use("/api/orders", orderRoutes);
+
+//Routes panier
+app.use("/api/cart" , cartRoutes);
 
 
 
