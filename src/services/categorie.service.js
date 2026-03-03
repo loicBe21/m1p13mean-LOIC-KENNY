@@ -4,7 +4,9 @@
 // ============================================
 
 const Categorie = require("../models/Categorie");
+const Produit = require("../models/Produit");
 const paginateAndFilter = require("../utils/paginate");
+const { ApiError, createNotFoundError } = require("../utils/apiError");
 
 /**
  * Créer une nouvelle catégorie
@@ -212,6 +214,103 @@ const getCategoriesActives = async () => {
   }
 };
 
+
+
+
+
+
+/**
+ * Récupérer toutes les catégories avec le nombre de produits actifs/publiés
+ * @returns {Promise<Array>} Liste des catégories avec comptage
+ */
+const getCategoriesWithProductCount = async () => {
+  try {
+    // ============================================
+    // ÉTAPE 1 : AGGRÉGATION MONGODB POUR COMPTER LES PRODUITS
+    // ============================================
+    
+    const categories = await Categorie.aggregate([
+      // Jointure avec la collection produits
+      {
+        $lookup: {
+          from: 'produits', // Nom de la collection Produit (Mongoose pluralise automatiquement)
+          let: { categoryId: '$_id' }, // Variable pour la catégorie courante
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$categorieId', '$$categoryId'] }, // Produits de cette catégorie
+                    { $eq: ['$actif', true] },                 // Produits actifs
+                    { $eq: ['$publierSurLeWeb', true] }        // Produits publiés
+                  ]
+                }
+              }
+            }
+          ],
+          as: 'products' // Résultat stocké dans le champ "products"
+        }
+      },
+      
+      // Projection des champs nécessaires + comptage
+      {
+        $project: {
+          _id: 1,
+          nom: 1,
+          description: 1,
+          produitCount: { $size: '$products' } // Compte les produits filtrés
+        }
+      },
+      
+      // Tri alphabétique
+      { $sort: { nom: 1 } }
+    ]);
+
+    // ============================================
+    // ÉTAPE 2 : CALCULER LE TOTAL GLOBAL
+    // ============================================
+    
+    const totalProducts = categories.reduce((sum, cat) => sum + cat.produitCount, 0);
+
+    // ============================================
+    // ÉTAPE 3 : CRÉER LA CATÉGORIE VIRTUELLE "TOUS LES PRODUITS"
+    // ============================================
+    
+    const allCategory = {
+      _id: 'all',
+      nom: 'Tous les produits',
+      description: 'Tous nos produits disponibles',
+      produitCount: totalProducts
+    };
+
+    // ============================================
+    // ÉTAPE 4 : RETOURNER LE RÉSULTAT FINAL
+    // ============================================
+    
+    return [allCategory, ...categories];
+    
+  } catch (error) {
+    console.error('❌ [CategorieService] Erreur getCategoriesWithProductCount:', error);
+    throw new ApiError(
+      'Erreur lors de la récupération des catégories',
+      500,
+      [{ reason: 'Une erreur technique est survenue' }],
+      'CATEGORY_FETCH_ERROR'
+    );
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
 /**
  * Obtenir les catégories inactives
  * @returns {Array} Catégories inactives
@@ -246,4 +345,5 @@ module.exports = {
   desactiverCategorie,
   getCategoriesActives,
   getCategoriesInactives,
+  getCategoriesWithProductCount,
 };

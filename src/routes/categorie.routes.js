@@ -14,8 +14,8 @@ const {
   activate,
   deactivate,
   getActives,
-    getInactives,
-  
+  getInactives,
+  getCategoriesWithCount,
 } = require("../controllers/categorie.controller");
 const authJwtMiddleware = require("../middlewares/authJwt.middelware");
 const authorizeRoles = require("../middlewares/authorizeRoles.middelware");
@@ -23,6 +23,14 @@ const authorizeRoles = require("../middlewares/authorizeRoles.middelware");
 // ============================================
 // PROTECTION DES ROUTES
 // ============================================
+
+
+/**
+ * @route   GET /api/categories/public/with-count
+ * @desc    Liste des catégories avec comptage produits (public)
+ * @access  Public
+ */
+router.get('/public/with-count', getCategoriesWithCount);
 
 // Toutes les routes nécessitent une authentification
 router.use(authJwtMiddleware);
