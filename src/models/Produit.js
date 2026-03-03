@@ -71,7 +71,15 @@ const produitSchema = new mongoose.Schema(
     // MÉDIAS (OPTIONNELS)
     // ============================================
 
-    image: imageSimple,
+    image:{
+      type: String,
+      validate: {
+        validator: function(v) {
+          return /^data:image\/[a-zA-Z]+;base64,/.test(v);
+        },
+        message: "Image invalide. Format attendu : image/type;base64,.."
+      }
+    },
 
     imagesSecondaires: [
       {
