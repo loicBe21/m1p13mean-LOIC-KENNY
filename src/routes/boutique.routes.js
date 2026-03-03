@@ -19,10 +19,12 @@ const {
   getListPaginated,
   assignUser,
   createWithRelations,
-  updateWithRelations
+  updateWithRelations,
+  getMyBoutiqueController,
 } = require("../controllers/boutique.controller");
 const authJwtMiddleware = require("../middlewares/authJwt.middelware");
 const authorizeRoles = require("../middlewares/authorizeRoles.middelware");
+
 
 // ============================================
 // PROTECTION DE TOUTES LES ROUTES
@@ -33,6 +35,13 @@ router.use(authJwtMiddleware);
 // ============================================
 // DÉFINITION DES ROUTES
 // ============================================
+
+/**
+ * @route   GET /api/boutiques/my
+ * @desc    Récupérer la boutique de l'utilisateur authentifié avec catégories
+ * @access  Private/Boutique
+ */
+router.get('/my',getMyBoutiqueController);
 
 router.post("/", create); // Créer boutique
 router.get("/", getAll); // Liste toutes boutiques
