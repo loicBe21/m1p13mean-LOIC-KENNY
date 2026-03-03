@@ -74,7 +74,7 @@ router.post(
 router.put(
   '/:id/with-relations', 
   authJwtMiddleware, 
-  authorizeRoles('admin'), 
+  authorizeRoles('boutique','admin'), 
   updateWithRelations
 );
 
