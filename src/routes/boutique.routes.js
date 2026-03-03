@@ -19,10 +19,12 @@ const {
   getListPaginated,
   assignUser,
   createWithRelations,
-  updateWithRelations
+  updateWithRelations,
+  getMyBoutiqueController,
 } = require("../controllers/boutique.controller");
 const authJwtMiddleware = require("../middlewares/authJwt.middelware");
 const authorizeRoles = require("../middlewares/authorizeRoles.middelware");
+
 
 // ============================================
 // PROTECTION DE TOUTES LES ROUTES
@@ -45,7 +47,15 @@ router.put("/:id", update); // Mettre à jour
 router.delete("/:id", remove); // Supprimer
 router.patch("/:id/activate", activate); // Activer
 router.patch("/:id/deactivate", deactivate); // Désactiver
-
+/**
+ * @route   GET /api/boutiques/my
+ * @desc    Récupérer la boutique de l'utilisateur authentifié avec catégories
+ * @access  Private/Boutique
+ */
+router.get(
+  '/my',          // ✅ Authentification requise  // ✅ Rôle "boutique" obligatoire
+  getMyBoutiqueController
+);
 /**
  * @route   POST /api/boutiques/:id/assign-user
  * @desc    Assigner un utilisateur boutique à une boutique

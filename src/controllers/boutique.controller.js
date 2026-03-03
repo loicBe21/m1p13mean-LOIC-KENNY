@@ -17,6 +17,7 @@ const {
   assignUserToBoutique,
   createBoutiqueWithRelations,
   updateBoutiqueWithRelations,
+  
 } = require("../services/boutique.service");
 
 const { formatErrorForClient } = require("../utils/errorFormatter");
@@ -330,6 +331,25 @@ const updateWithRelations = async (req, res) => {
 };
 
 
+/**
+ * GET /api/boutiques/my
+ * Récupérer la boutique de l'utilisateur authentifié avec catégories
+ * @access Private/Boutique
+ */
+const getMyBoutiqueController = async (req, res) => {
+  try {
+    // L'ID utilisateur est injecté par le middleware d'authentification
+    const boutique = await getMyBoutique(req.user.id);
+    
+    return success(res, 200, 'Boutique récupérée avec succès', { boutique });
+    
+  } catch (err) {
+    return error(res, err);
+  }
+};
+
+
+
 module.exports = {
   create,
   getAll,
@@ -345,4 +365,5 @@ module.exports = {
   assignUser,
   updateWithRelations,
   createWithRelations,
+  getMyBoutiqueController,
 };

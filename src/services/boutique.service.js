@@ -18,6 +18,12 @@ const {
   ValidationError,
 } = require("../utils/validationHelpers");
 
+
+const {
+  createForbiddenError,
+  createNotFoundError,
+} = require("../utils/apiError");
+
 /**
  * Créer une nouvelle boutique
  * @param {Object} boutiqueData - Données de la boutique
@@ -624,6 +630,53 @@ const updateBoutiqueWithRelations = async (id, boutiqueData, userIds = null, cat
 
 
 
+/**
+ * Récupérer la boutique de l'utilisateur authentifié avec catégories peuplées
+ * @param {String} userId - ID utilisateur authentifié
+ * @returns {Object} Boutique avec catégories complètes
+ */
+const getMyBoutique = async (userId) => {
+  // ============================================
+  // 1. VÉRIFICATION UTILISATEUR ET RÔLE
+  // ============================================
+  const user = await User.findById(userId)
+    .select('role boutiqueId')
+    .lean();
+  
+  if (!user) {
+    throw createNotFoundError('Utilisateur', userId);
+  }
+  
+  if (user.role !== 'boutique' || !user.boutiqueId) {
+    throw createForbiddenError(
+      'Accès réservé aux utilisateurs boutique avec boutique associée'
+    );
+  }
+  
+  // ============================================
+  // 2. RÉCUPÉRATION BOUTIQUE AVEC CATÉGORIES PEUPLÉES
+  // ============================================
+  const boutique = await Boutique.findById(user.boutiqueId)
+    .populate({
+      path: 'categories',
+      select: '_id nom description parent actif createdAt updatedAt',
+      options: { sort: { nom: 1 } } // Tri alphabétique
+    })
+    .lean();
+  
+  if (!boutique) {
+    throw createNotFoundError('Boutique', user.boutiqueId.toString());
+  }
+  
+  return boutique;
+};
+
+
+
+
+
+
+
 
 module.exports = {
   createBoutique,
@@ -640,4 +693,5 @@ module.exports = {
   assignUserToBoutique,
   createBoutiqueWithRelations,
   updateBoutiqueWithRelations,
+  getMyBoutique,
 };
