@@ -17,8 +17,10 @@ const {
   assignUserToBoutique,
   createBoutiqueWithRelations,
   updateBoutiqueWithRelations,
-  
+  getMyBoutique,
 } = require("../services/boutique.service");
+
+const { success, error } = require("../utils/responseHandler");
 
 const { formatErrorForClient } = require("../utils/errorFormatter");
 
@@ -339,11 +341,13 @@ const updateWithRelations = async (req, res) => {
 const getMyBoutiqueController = async (req, res) => {
   try {
     // L'ID utilisateur est injecté par le middleware d'authentification
+    console.log("makato")
     const boutique = await getMyBoutique(req.user.id);
     
     return success(res, 200, 'Boutique récupérée avec succès', { boutique });
     
   } catch (err) {
+    console.log(err)
     return error(res, err);
   }
 };
