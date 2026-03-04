@@ -101,6 +101,85 @@ const createOrder = async (req, res) => {
   }
 };
 
+
+/**
+ * GET /api/orders/boutique
+ * Lister les commandes de la boutique authentifiée
+ *
+ * @route   GET /api/orders/boutique
+ * @access  Private/Boutique
+ * @query   {String}  [status] - Filtrer par statut (draft|pending|paid|completed|cancelled)
+ * @query   {String}  [type]   - Filtrer par type (in_store|online)
+ * @query   {Number}  [page]   - Page (défaut: 1)
+ * @query   {Number}  [limit]  - Limite par page (défaut: 10)
+ */
+const getOrdersByBoutique = async (req, res) => {
+  try {
+    // ============================================
+    // 1. RÉCUPÉRATION BOUTIQUE DEPUIS LE TOKEN
+    // ============================================
+    const user = await require('../models/User')
+      .findById(req.user.id)
+      .select('boutiqueId role')
+      .lean();
+
+    if (!user?.boutiqueId) {
+      return error(res, {
+        message: 'Boutique introuvable',
+        statusCode: 404,
+        details: [{ field: 'boutiqueId', reason: 'Aucune boutique associée à ce compte' }],
+      });
+    }
+
+    // ============================================
+    // 2. VALIDATION QUERY PARAMS
+    // ============================================
+    const validStatuses = ['draft', 'pending', 'paid', 'completed', 'cancelled'];
+    const validTypes    = ['in_store', 'online'];
+
+    const { status, type, page = 1, limit = 10 } = req.query;
+
+    if (status && !validStatuses.includes(status)) {
+      return error(res, {
+        message: 'Statut invalide',
+        statusCode: 400,
+        details: [{ field: 'status', reason: `Valeurs autorisées: ${validStatuses.join(', ')}` }],
+      });
+    }
+
+    if (type && !validTypes.includes(type)) {
+      return error(res, {
+        message: 'Type invalide',
+        statusCode: 400,
+        details: [{ field: 'type', reason: `Valeurs autorisées: ${validTypes.join(', ')}` }],
+      });
+    }
+
+    const parsedPage  = Math.max(1, parseInt(page)  || 1);
+    const parsedLimit = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Max 50
+
+    // ============================================
+    // 3. APPEL SERVICE
+    // ============================================
+    const result = await orderService.getOrdersByBoutique(
+      user.boutiqueId,
+      { status, type, page: parsedPage, limit: parsedLimit }
+    );
+
+    // ============================================
+    // 4. RÉPONSE
+    // ============================================
+    return success(res, 200, `${result.totalDocuments} commande(s) trouvée(s)`, result);
+
+  } catch (err) {
+    return error(res, err);
+  }
+};
+
+// ============================================
+// EXPORT — ajoute getOrdersByBoutique
+// ============================================
 module.exports = {
   createOrder,
+  getOrdersByBoutique,
 };

@@ -5,7 +5,7 @@
 
 const express = require("express");
 const router = express.Router();
-const { create, update, list ,listPublic,listBackoffice } = require("../controllers/produit.controller");
+const { create, update, list ,listPublic,listBackoffice , listActiveByBoutique , getById } = require("../controllers/produit.controller");
 const authJwtMiddleware = require("../middlewares/authJwt.middelware");
 const authorizeRoles = require("../middlewares/authorizeRoles.middelware");
 
@@ -24,6 +24,15 @@ router.use(authJwtMiddleware);
 // ENDPOINTS BOUTIQUE (rôle "boutique")
 // ============================================
 
+
+
+/**
+ * @route   GET /api/produits/boutique/actifs
+ * @desc    Tous les produits actifs de la boutique (pour select/formulaire)
+ * @access  Private/Boutique
+ */
+router.get('/boutique/actifs', authorizeRoles('boutique'), listActiveByBoutique);
+
 /**
  * @route   POST /api/produits
  * @desc    Créer un produit (boutique uniquement)
@@ -38,6 +47,16 @@ router.post("/", authorizeRoles("boutique"), create);
  */
 router.put("/:id", authorizeRoles("boutique" , "admin"), update);
 
+
+
+
+/**
+ * @route   GET /api/produits/:id
+ * @desc    Détail d'un produit (boutique propriétaire)
+ * @access  Private/Boutique
+ * 
+ */
+router.get('/:id', authorizeRoles('boutique', 'admin'), getById);
 
 
 /**
