@@ -381,7 +381,7 @@ class OrderService {
         boutiqueId: orderData.boutiqueId, // ✅ DIFFÉRENCE 2 : boutiqueId fourni
         clientId: userId, // ✅ DIFFÉRENCE 3 : clientId au lieu de sellerId
         nomClient: user.nom,
-        status: 'pending', // ✅ DIFFÉRENCE 4 : status pending
+       // status: 'pending', // ✅ DIFFÉRENCE 4 : status pending
         items: orderItems,
         subtotal: roundTo2Decimals(subtotal),
         globalDiscountPercentage,
@@ -546,6 +546,62 @@ class OrderService {
     });
   }
 
+
+
+
+  /**
+ * Récupérer et lister les commandes d'une boutique
+ * 
+ * @param {String} boutiqueId - ID de la boutique
+ * @param {Object} filters - Filtres optionnels { status, type, page, limit }
+ * @returns {Promise<Object>} Liste paginée des commandes
+ */
+ async getOrdersByBoutique(boutiqueId, filters = {}) {
+    const {
+      status,
+      type,
+      page = 1,
+      limit = 10,
+    } = filters;
+
+    // ============================================
+    // 1. CONSTRUCTION QUERY DYNAMIQUE
+    // ============================================
+    const query = { boutiqueId };
+
+    if (status) query.status = status;
+    if (type)   query.type   = type;
+
+    // ============================================
+    // 2. PAGINATION
+    // ============================================
+    const skip        = (page - 1) * limit;
+    const totalDocuments = await Order.countDocuments(query);
+    const totalPages  = Math.ceil(totalDocuments / limit);
+
+    // ============================================
+    // 3. REQUÊTE PRINCIPALE
+    // ============================================
+    const orders = await Order.find(query)
+      .populate('clientId',  'nom email')
+      .populate('sellerId',  'nom email')
+      .populate('boutiqueId','nom')
+      .sort({ orderDate: -1 })  // Plus récentes en premier
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    // ============================================
+    // 4. RETOUR STRUCTURÉ
+    // ============================================
+    return {
+      documents: orders,
+      totalDocuments,
+      totalPages,
+      page:  Number(page),
+      limit: Number(limit),
+    };
+  }
 
 
 

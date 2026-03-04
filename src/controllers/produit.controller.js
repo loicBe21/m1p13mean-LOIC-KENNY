@@ -13,6 +13,8 @@ const {
   getBackofficeProducts, 
 } = require("../services/produit.service");
 
+const Produit = require('../models/Produit');
+
 /**
  * POST /api/produits
  * Créer un produit (infos minimales requises)
@@ -130,6 +132,7 @@ const update = async (req, res) => {
       (key) => updateData[key] === undefined && delete updateData[key]
     );
 
+    console.log(updateData)
     // Appel service
     const produit = await updateProduct(id, updateData, req.user.id);
 
@@ -248,11 +251,130 @@ const listBackoffice = async (req, res) => {
 };
 
 
+/**
+ * GET /api/produits/boutique/actifs
+ * Liste TOUS les produits actifs de la boutique (pour formulaires/selects)
+ * Sans pagination - optimisé pour dropdown
+ *
+ * @route   GET /api/produits/boutique/actifs
+ * @access  Private/Boutique
+ */
+const listActiveByBoutique = async (req, res) => {
+  try {
+    const User = require('../models/User');
+
+    // Récupérer boutiqueId depuis le token
+    const user = await User.findById(req.user.id)
+      .select('boutiqueId')
+      .lean();
+
+    if (!user?.boutiqueId) {
+      return error(res, {
+        message: 'Boutique introuvable',
+        statusCode: 404,
+        details: [{ field: 'boutiqueId', reason: 'Aucune boutique associée à ce compte' }],
+      });
+    }
+
+    
+
+    const produits = await Produit.find({
+      boutiqueId: user.boutiqueId,
+      actif: true,
+    })
+    .select('nom prix remise enPromotion pourcentagePromo quantite reference')
+    .sort({ nom: 1 }) // Alphabétique pour le select
+    .lean({ virtuals: true }); //  Inclut prixFinal (virtual)
+
+    return success(res, 200, `${produits.length} produit(s) actif(s)`, {
+      produits
+    });
+
+  } catch (err) {
+    return error(res, err);
+  }
+};
+
+
+
+
+
+
+/**
+ * GET /api/produits/:id
+ * Récupérer un produit par ID (boutique propriétaire uniquement)
+ *
+ * @route   GET /api/produits/:id
+ * @access  Private/Boutique
+ */
+const getById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validation ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return error(res, {
+        message: 'ID de produit invalide',
+        statusCode: 400,
+        details: [{ field: 'id', reason: 'Format d\'identifiant incorrect' }],
+      });
+    }
+
+    // Récupérer boutiqueId depuis le token
+    const User = require('../models/User');
+    const user = await User.findById(req.user.id)
+      .select('boutiqueId role')
+      .lean();
+
+    if (!user?.boutiqueId) {
+      return error(res, {
+        message: 'Boutique introuvable',
+        statusCode: 404,
+        details: [{ field: 'boutiqueId', reason: 'Aucune boutique associée à ce compte' }],
+      });
+    }
+
+    // Récupérer le produit
+    const produit = await Produit.findById(id)
+      .populate('categorieId', 'nom description')
+      .populate('boutiqueId', 'nom email')
+      .lean();
+
+    if (!produit) {
+      return error(res, {
+        message: 'Produit introuvable',
+        statusCode: 404,
+        details: [{ field: 'id', reason: `Aucun produit avec l'ID ${id}` }],
+      });
+    }
+
+    // Sécurité : vérifier que le produit appartient à la boutique
+    if (produit.boutiqueId._id.toString() !== user.boutiqueId.toString()) {
+      return error(res, {
+        message: 'Accès refusé',
+        statusCode: 403,
+        details: [{ field: 'boutiqueId', reason: 'Ce produit n\'appartient pas à votre boutique' }],
+      });
+    }
+
+    return success(res, 200, `Produit "${produit.nom}" récupéré avec succès`, {
+      produit
+    });
+
+  } catch (err) {
+    return error(res, err);
+  }
+};
+
+
+
 
 module.exports = {
   create,
   update,
   list,
   listPublic, 
-  listBackoffice, 
+  listBackoffice,
+  listActiveByBoutique ,
+  getById
 }
